@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
 
 namespace _009GetAElement {
     [TransactionAttribute(TransactionMode.Manual)]
@@ -16,7 +17,8 @@ namespace _009GetAElement {
             UIDocument uiDoc = commandData.Application.ActiveUIDocument;
             Application app = commandData.Application.Application;
             Document doc = uiDoc.Document;
-            CteareDoor(doc);
+            MoveColumn(doc);
+            //CteareDoor(doc);
             //string s = CreateDefinition(doc);
             //foreach (string id in GetDefinition(app))
             //{
@@ -284,6 +286,99 @@ namespace _009GetAElement {
             else {
                 TaskDialog.Show("族类型不存在", "没有找到族类型：" + doorTypeName);
             }
+        }
+
+        public void MoveColumn(Document doc)
+        {
+            using (Transaction tr=new Transaction(doc,"移动柱"))
+            {
+                tr.Start();
+                var creater = doc.Create;
+                XYZ origin=new XYZ();
+                Level level = GetALevel(doc);
+                FamilySymbol columnSymbol = GetAType(doc, BuiltInCategory.OST_StructuralColumns, "矩形柱600X600");
+                FamilyInstance column = creater.NewFamilyInstance(origin, columnSymbol, level, StructuralType.Column);
+                XYZ newPlace=new XYZ(10,20,30);
+                if (!column.Pinned)//移动之前需要判断是否被锁定
+                {
+                    ElementTransformUtils.CopyElement(doc,column.Id,newPlace);
+                    LocationPoint cpt=column.Location as LocationPoint;//通过定位点移动
+                    cpt.Move(new XYZ(10, 10, 0));
+                    cpt.Point=new XYZ(0,20,0);
+                    cpt.Rotate(Line.CreateBound(cpt.Point, new XYZ(cpt.Point.X, cpt.Point.Y, 1)), Math.PI / 3);
+                    if (ElementTransformUtils.CanMirrorElement(doc,column.Id))//镜像之前应进行判断
+                    {
+                        Plane plane=Plane.CreateByNormalAndOrigin(XYZ.BasisY, new XYZ(0,2,0));//XYZ.BasisY沿X轴镜像
+                        ElementTransformUtils.MirrorElement(doc,column.Id,plane);
+                    }
+
+                    TaskDialog.Show("Mir", column.Mirrored.ToString());
+                }
+                else
+                {
+                    TaskDialog.Show("错误","对象被锁定，无法移动",TaskDialogCommonButtons.Ok);
+                }
+                tr.Commit();
+            }
+        }
+
+        private FamilySymbol GetAType(Document doc, BuiltInCategory bc,string name) {
+            ElementClassFilter familySymbolFilter = new ElementClassFilter(typeof(FamilySymbol));
+            ElementCategoryFilter categoryFilter = new ElementCategoryFilter(bc);
+            LogicalAndFilter columnInstanceFilter = new LogicalAndFilter(familySymbolFilter, categoryFilter);
+            FilteredElementCollector collector = new FilteredElementCollector(doc);
+
+            FamilySymbol cc = null;
+            var columns = collector.WherePasses(columnInstanceFilter);
+            foreach (Element element in collector)
+            {
+                if (element.Name== name)
+                {
+                    cc=element as FamilySymbol;
+                }
+            }
+            return cc;
+        }
+
+        private Level GetALevel(Document doc)
+        {
+            Level l = doc.GetElement(new ElementId(311)) as Level;
+            return l;
+        }
+
+        public void RotateWall(Document doc)
+        {
+            Level level= GetALevel(doc);
+            using (Transaction tr=new Transaction(doc,"旋转墙"))
+            {
+                tr.Start();
+                Line line1=Line.CreateBound(new XYZ(0,-10,0), new XYZ(0,10,0));
+                Line line2=Line.CreateBound(new XYZ(0, 10, 0), new XYZ(20, 10, 0));
+                Wall wall1=Wall.Create(doc,line1, level.Id,false);
+                Wall wall2=Wall.Create(doc,line2, level.Id,false);
+                LocationCurve wCurve1=wall1.Location as LocationCurve;
+                XYZ pt1 = wCurve1.Curve.GetEndPoint(1);
+                XYZ pt2=new XYZ(pt1.X,pt1.Y,1);
+                Line axis=Line.CreateBound(pt1,pt2);
+                ElementTransformUtils.RotateElement(doc,wall1.Id,axis,Math.PI/4);//使用工具旋转墙
+                wCurve1.Rotate(axis, Math.PI / 2);//旋转定位线
+                tr.Commit();
+            }
+        }
+
+        private WallType GetWallType(Document doc,  string name) {
+            ElementClassFilter wallTypeFilter = new ElementClassFilter(typeof(WallType));
+            FilteredElementCollector collector = new FilteredElementCollector(doc);
+
+            WallType cc = null;
+            var columns = collector.WherePasses(wallTypeFilter);
+            foreach (Element element in collector) {
+                if (element.Name == name) {
+                    cc = element as WallType;
+                    break;
+                }
+            }
+            return cc;
         }
     }
 }
