@@ -17,7 +17,8 @@ namespace _009GetAElement {
             UIDocument uiDoc = commandData.Application.ActiveUIDocument;
             Application app = commandData.Application.Application;
             Document doc = uiDoc.Document;
-            MoveColumn(doc);
+            ArrayCreate(doc);
+            //MoveColumn(doc);
             //CteareDoor(doc);
             //string s = CreateDefinition(doc);
             //foreach (string id in GetDefinition(app))
@@ -33,6 +34,26 @@ namespace _009GetAElement {
             //TaskDialog.Show("ok", s, TaskDialogCommonButtons.Ok);//OST_StarRailing
             return Result.Succeeded;
         }
+        /// <summary>
+        /// 3.2.6阵列
+        /// </summary>
+        /// <param name="doc"></param>
+        public void ArrayCreate(Document doc)
+        {
+            Wall wall=doc.GetElement(new ElementId(338393)) as Wall;
+            using (Transaction tr=new Transaction(doc,"阵列"))
+            {
+                tr.Start();
+                XYZ translation=new XYZ(0,10,0);
+                //LinearArray.Create(doc, doc.ActiveView, wall.Id, 4, translation, ArrayAnchorMember.Last);
+                //RadialArray.Create(doc, doc.ActiveView, wall.Id, 16, Line.CreateBound(new XYZ(), new XYZ(0, 0, 1)),
+                //    Math.PI , ArrayAnchorMember.Last);
+                RadialArray.ArrayElementWithoutAssociation(doc, doc.ActiveView, wall.Id, 6, Line.CreateBound(new XYZ(), new XYZ(0, 0, 1)),
+                    Math.PI/3, ArrayAnchorMember.Second);//阵列但不成组
+                tr.Commit();
+            }
+        }
+
         /// <summary>
         /// 已知ID时获取对象
         /// </summary>
