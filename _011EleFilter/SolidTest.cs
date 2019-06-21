@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Autodesk.Revit.DB.Structure;
 
 namespace _011EleFilter {
     [TransactionAttribute(TransactionMode.Manual)]
@@ -13,8 +14,69 @@ namespace _011EleFilter {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) {
             UIDocument uiDoc = commandData.Application.ActiveUIDocument;
             Document doc = uiDoc.Document;
-            CEFT(doc);
+            LogicalAndFilterTest(doc);
             return Result.Succeeded;
+        }
+
+        public static void LogicalAndFilterTest(Document doc)
+        {
+            //情形1：合并两个过滤器-找到所有符合特定设计选型的墙
+            ElementClassFilter wallFilter=new ElementClassFilter(typeof(Wall));
+            FilteredElementCollector collector=new FilteredElementCollector(doc);
+            ICollection<ElementId> designOptionIds = collector.OfClass(typeof(DesignOption)).ToElementIds();
+            int n = 0;
+            foreach (ElementId id in designOptionIds)
+            {
+                ElementDesignOptionFilter designfFilter=new ElementDesignOptionFilter(id);
+                LogicalAndFilter andFilter=new LogicalAndFilter(wallFilter,designfFilter);
+                collector=new FilteredElementCollector(doc);
+                int wallCount = collector.WherePasses(andFilter).ToElements().Count;
+                n += wallCount;
+            }
+
+            foreach (ElementId id in designOptionIds)
+            {
+                List<ElementFilter> filters=new List<ElementFilter>();
+                filters.Add(wallFilter);
+                filters.Add(new ElementDesignOptionFilter(id));
+                filters.Add(new StructuralWallUsageFilter(StructuralWallUsage.Bearing));
+                LogicalAndFilter andFilter=new LogicalAndFilter(filters);
+
+                collector=new FilteredElementCollector(doc);
+                int wallCount= collector.WherePasses(andFilter).ToElements().Count;
+
+                n += wallCount;
+            }
+            TaskDialog.Show("T", n.ToString());
+        }
+        public static void LogicalOrFilterTest(Document doc)
+        {
+            //情形1：合并两个过滤器-找到所有属于墙或者属于标高类别的元素
+            ElementCategoryFilter filterWall=new ElementCategoryFilter(BuiltInCategory.OST_Walls);
+            ElementCategoryFilter filterLevel=new ElementCategoryFilter(BuiltInCategory.OST_Levels);
+            LogicalOrFilter orFilter=new LogicalOrFilter(filterWall,filterLevel);
+            FilteredElementCollector collector=new FilteredElementCollector(doc);
+            ICollection<Element> founds= collector.WherePasses(orFilter).ToElements();
+            int n = 0;
+            foreach (Element element in founds)
+            {
+                n++;
+            }
+            //情形2：合并两个过滤器集合-找到所有属于传入类型的元素
+            Type[] elemTypes = {typeof(Wall), typeof(Level), typeof(Floor), typeof(Rebar), typeof(MEPSystem)};
+            List<ElementFilter> filters=new List<ElementFilter>();
+            foreach (Type elemType in elemTypes)
+            {
+                ElementClassFilter filter=new ElementClassFilter(elemType);
+                filters.Add(filter);
+            }
+            orFilter=new LogicalOrFilter(filters);
+            collector=new FilteredElementCollector(doc);
+            founds = collector.WherePasses(orFilter).ToElements();
+            foreach (Element element in founds) {
+                n++;
+            }
+            TaskDialog.Show("T", n.ToString());
         }
         /// <summary>
         /// CurveElementFilter匹配线型元素

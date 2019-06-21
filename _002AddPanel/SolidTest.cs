@@ -15,10 +15,10 @@ namespace _002AddPanel {
             //string tabName = "UCD场地工具";
             //application.CreateRibbonTab(tabName);
             //创建新面板
-            RibbonPanel ribbonPanel = application.CreateRibbonPanel("Twinmotion", "Hello");
+            RibbonPanel ribbonPanel = application.CreateRibbonPanel("Twinmotion", "UCD场地工具");
             //创建一个按钮添加到标签页
             string str = Assembly.GetExecutingAssembly().Location;
-            PushButtonData pushButtonData = new PushButtonData("cmdHelloWorld", "Hello World", @"D:\Studay\CSharp\Work\RevitDeveloperGuide\_001HelloWorld\bin\Debug\_001HelloWorld.dll", "_001HelloWorld.SolidTest");
+            PushButtonData pushButtonData = new PushButtonData("cmdHelloWorld", "创建轨道", @"D:\Studay\CSharp\Work\Revit\RailingCreat\bin\Release\RailingCreatV1.1.dll", "RailingCreat.RailingCreate");
             PushButton pushButton = ribbonPanel.AddItem(pushButtonData) as PushButton;
             //设置按钮属性
             //a、提示
